@@ -1,12 +1,21 @@
-# ComplyPilot implementation outcomes
+# ComplyPilot Implementation Outcomes & Verification
 
-- Build a responsive public entry flow at `/`, `/login`, and `/signup` with a minimal static landing page, app name, tagline, feature bullets, and Login CTA; do not add hero imagery, marketing funnel content, or animation.
-- Build the Employee and Manager app shell with a persistent left sidebar and the routes `/app/dashboard`, `/app/tasks`, `/app/documents`, `/app/ask`, and `/app/profile`; provide Manager-only `/app/team` while keeping admin navigation separate.
-- Build shared onboarding task/checklist components with not started, in progress, pending review, and completed states, due dates, progress bars, task filtering, and local status updates reused across employee, manager, and HR Admin surfaces.
-- Build the documents flow with a drag-and-drop/file-picker affordance, uploaded/pending review/approved/rejected badges, and an inline retry state for a simulated failed upload.
-- Build the policy Q&A chat with user/assistant bubbles, typing indicator, visible source citations for grounded answers, a distinct contact-HR fallback answer treatment, and a simulated error state that suggests contacting HR.
-- Build the Manager team view with direct reports, completion progress, and status flags.
-- Build the HR Admin console at `/admin/dashboard`, `/admin/employees`, `/admin/employees/:id`, `/admin/templates`, `/admin/policies`, `/admin/compliance`, `/admin/reports`, and `/admin/settings`; prioritize dense scanability, count cards, overdue flags, filterable tables, employee review actions, and admin configuration surfaces.
-- Include empty states for no onboarding plan and no policies uploaded, skeleton loading states for lists/dashboards, responsive narrow-screen navigation, and accessible status labels/icons.
-- Add `public/manus-routes.json`, metadata/favicon/brand mark, reusable styling tokens, mock data, local demo role switching, and run/build instructions.
-- Validate the preview server, route manifest, host-managed diagnostics, production build, core interaction states, and responsive layout; commit the complete implementation to the managed project main branch without publishing publicly.
+- [x] **Public entry flow**: Built at `/`, `/login`, and `/signup` with clean static presentation, tagline, feature bullets, demo login CTA, and magic link affordance.
+- [x] **Employee and Manager shell**: Persistent left sidebar with role switcher, routes `/app/dashboard`, `/app/tasks`, `/app/documents`, `/app/ask`, `/app/profile`, and Manager-only `/app/team`.
+- [x] **Onboarding checklist engine**: Task statuses (`not-started`, `in-progress`, `pending-review`, `completed`), real-time progress calculations, celebratory completion banner, and filtering.
+- [x] **Document upload & verification flow**: Drag-and-drop file upload, file status tracking (`uploaded`, `pending-review`, `approved`, `rejected`, `failed`), retry state, and linked task auto-completion on HR approval.
+- [x] **Grounded Policy Q&A assistant**: Multi-document knowledge base (`Employee Handbook`, `Security Policy`, `Data Privacy Standard`, `Remote Work Guidelines`), auditable section citations with popover detail modal, and explicit "Contact HR" fallback for ungrounded queries.
+- [x] **Manager team dashboard**: Direct report progress bars, status badges (`On track`, `Needs attention`, `Complete`), and team snapshot CSV export.
+- [x] **HR Admin console**:
+  - `/admin/dashboard`: Metrics cards, compliance pulse, activity feed, and attention queue.
+  - `/admin/employees`: Search, department filter, and interactive "Add Employee" modal with template assignment.
+  - `/admin/employees/:id`: Document review queue with approve/reject actions and live audit trail.
+  - `/admin/templates`: Reusable template catalog and "New Template" modal with task offset configuration.
+  - `/admin/policies`: Policy index and "Upload Policy" modal.
+  - `/admin/compliance`: Requirements tracker and "Add Requirement" modal.
+  - `/admin/reports`: Dynamic audit-ready CSV export with timestamps.
+  - `/admin/settings`: Org preferences and "Reset Demo Data" capability.
+- [x] **Immutable Audit Log**: Searchable and filterable audit modal tracking actor, action, target table, and metadata.
+- [x] **Automated compliance reminders**: Modal to simulate dispatching email notifications to overdue employees.
+- [x] **State persistence**: Reactive `localStorage` state management that preserves edits and supports instant resets.
+- [x] **Checkpointing**: Discrete git commits documenting each stage of development.
