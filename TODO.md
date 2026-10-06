@@ -17,5 +17,7 @@
   - `/admin/settings`: Org preferences and "Reset Demo Data" capability.
 - [x] **Immutable Audit Log**: Searchable and filterable audit modal tracking actor, action, target table, and metadata.
 - [x] **Automated compliance reminders**: Modal to simulate dispatching email notifications to overdue employees.
+- [x] **Dynamic task date modification**: Employees and HR admins can click any task due date to adjust dates using an inline calendar picker, recalculating due timelines with audit log tracking.
+- [x] **Task assignment & creation**: Interactive `AddTaskModal` allows assigning custom tasks to specific employees with custom categories, due dates, and priorities from both Employee and HR Admin screens.
 - [x] **State persistence**: Reactive `localStorage` state management that preserves edits and supports instant resets.
 - [x] **Checkpointing**: Discrete git commits documenting each stage of development.
