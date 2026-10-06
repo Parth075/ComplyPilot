@@ -1,0 +1,21 @@
+{
+  "routes": [
+    { "path": "/", "title": "ComplyPilot" },
+    { "path": "/login", "title": "Log in" },
+    { "path": "/signup", "title": "Create account" },
+    { "path": "/app/dashboard", "title": "Dashboard" },
+    { "path": "/app/tasks", "title": "My tasks" },
+    { "path": "/app/documents", "title": "Documents" },
+    { "path": "/app/ask", "title": "Ask policy" },
+    { "path": "/app/profile", "title": "My profile" },
+    { "path": "/app/team", "title": "My team" },
+    { "path": "/admin/dashboard", "title": "Admin dashboard" },
+    { "path": "/admin/employees", "title": "Employees" },
+    { "path": "/admin/employees/:id", "title": "Employee detail" },
+    { "path": "/admin/templates", "title": "Templates" },
+    { "path": "/admin/policies", "title": "Policies" },
+    { "path": "/admin/compliance", "title": "Compliance" },
+    { "path": "/admin/reports", "title": "Reports" },
+    { "path": "/admin/settings", "title": "Settings" }
+  ]
+}
