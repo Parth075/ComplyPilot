@@ -222,6 +222,7 @@ export function App() {
       return (
         <DashboardPage
           tasks={complyStore.tasks}
+          role={role}
           onStatusChange={(id, status) => {
             complyStore.updateTaskStatus(id, status)
             notify('Task status updated.')
@@ -383,6 +384,7 @@ export function App() {
     return (
       <DashboardPage
         tasks={complyStore.tasks}
+        role={role}
         onStatusChange={(id, status) => {
           complyStore.updateTaskStatus(id, status)
           notify('Task status updated.')
@@ -792,8 +794,15 @@ function formatISOToDisplayDate(isoDate: string): string {
   return isoDate
 }
 
+const ROLE_META: Record<Role, { firstName: string; subtitle: string }> = {
+  employee: { firstName: 'Maya', subtitle: "Here's the next clear step in your onboarding plan." },
+  manager:  { firstName: 'Jordan', subtitle: "Here's a live view of your team's onboarding progress." },
+  admin:    { firstName: 'Grace', subtitle: "Here's an overview of onboarding and compliance activity." },
+}
+
 function DashboardPage({
   tasks,
+  role,
   onStatusChange,
   showEmptyPlan,
   onToggleEmpty,
@@ -801,6 +810,7 @@ function DashboardPage({
   onOpenContactHR,
 }: {
   tasks: Task[]
+  role: Role
   onStatusChange: (id: string, status: TaskStatus) => void
   showEmptyPlan: boolean
   onToggleEmpty: () => void
@@ -810,6 +820,7 @@ function DashboardPage({
   const completed = tasks.filter((task) => task.status === 'completed').length
   const progress = Math.round((completed / tasks.length) * 100)
   const nextTasks = tasks.filter((task) => task.status !== 'completed').slice(0, 3)
+  const { firstName, subtitle } = ROLE_META[role] ?? ROLE_META.employee
 
   return (
     <div className="page-stack">
@@ -826,8 +837,8 @@ function DashboardPage({
       <div className="welcome-band">
         <div>
           <div className="eyebrow eyebrow--teal">Monday, September 14, 2026</div>
-          <h2>Good morning, Maya.</h2>
-          <p>Here’s the next clear step in your onboarding plan.</p>
+          <h2>Good morning, {firstName}.</h2>
+          <p>{subtitle}</p>
         </div>
         <div className="welcome-band__meta">
           <span className="welcome-band__meta-label">Plan completion</span>
