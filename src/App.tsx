@@ -81,6 +81,7 @@ import {
 import {
   AddEmployeeModal,
   AddRequirementModal,
+  AddTaskModal,
   AuditLogModal,
   CitationDetailModal,
   ContactHRModal,
@@ -172,7 +173,8 @@ export function App() {
   const [showPolicyEmpty, setShowPolicyEmpty] = useState(false)
 
   // Modals state
-  const [modalOpen, setModalOpen] = useState<'add-employee' | 'create-template' | 'add-requirement' | 'upload-policy' | 'audit-log' | 'contact-hr' | 'send-reminders' | null>(null)
+  const [modalOpen, setModalOpen] = useState<'add-employee' | 'create-template' | 'add-requirement' | 'upload-policy' | 'audit-log' | 'contact-hr' | 'send-reminders' | 'add-task' | null>(null)
+  const [addTaskOwner, setAddTaskOwner] = useState<string>('Maya Chen')
   const [citationModalData, setCitationModalData] = useState<{ section: string; content: string; source: string } | null>(null)
   const [contactHrQuestion, setContactHrQuestion] = useState('')
 
@@ -224,12 +226,20 @@ export function App() {
             complyStore.updateTaskStatus(id, status)
             notify('Task status updated.')
           }}
+          onDueDateChange={(id, date) => {
+            complyStore.updateTaskDueDate(id, date)
+            notify(`Task due date updated to ${date}.`)
+          }}
           showEmptyPlan={showEmptyPlan}
           onToggleEmpty={() => setShowEmptyPlan(v => !v)}
           onNavigate={navigate}
           onOpenContactHR={() => {
             setContactHrQuestion('')
             setModalOpen('contact-hr')
+          }}
+          onOpenAddTask={() => {
+            setAddTaskOwner('Maya Chen')
+            setModalOpen('add-task')
           }}
         />
       )
@@ -241,6 +251,14 @@ export function App() {
           onStatusChange={(id, status) => {
             complyStore.updateTaskStatus(id, status)
             notify('Task status updated.')
+          }}
+          onDueDateChange={(id, date) => {
+            complyStore.updateTaskDueDate(id, date)
+            notify(`Task due date updated to ${date}.`)
+          }}
+          onOpenAddTask={() => {
+            setAddTaskOwner('Maya Chen')
+            setModalOpen('add-task')
           }}
         />
       )
@@ -311,6 +329,18 @@ export function App() {
             complyStore.reviewDocument(id, 'rejected')
             notify('Document rejected.')
           }}
+          onDueDateChange={(id, date) => {
+            complyStore.updateTaskDueDate(id, date, 'Grace Kim', 'hr_admin')
+            notify(`Task due date updated to ${date}.`)
+          }}
+          onStatusChange={(id, status) => {
+            complyStore.updateTaskStatus(id, status, 'Grace Kim', 'hr_admin')
+            notify('Task status updated.')
+          }}
+          onOpenAddTask={(owner) => {
+            setAddTaskOwner(owner)
+            setModalOpen('add-task')
+          }}
           onNavigate={navigate}
           notify={notify}
           onOpenAuditLog={() => setModalOpen('audit-log')}
@@ -369,11 +399,22 @@ export function App() {
     return (
       <DashboardPage
         tasks={complyStore.tasks}
-        onStatusChange={() => undefined}
+        onStatusChange={(id, status) => {
+          complyStore.updateTaskStatus(id, status)
+          notify('Task status updated.')
+        }}
+        onDueDateChange={(id, date) => {
+          complyStore.updateTaskDueDate(id, date)
+          notify(`Task due date updated to ${date}.`)
+        }}
         showEmptyPlan={false}
         onToggleEmpty={() => undefined}
         onNavigate={navigate}
         onOpenContactHR={() => setModalOpen('contact-hr')}
+        onOpenAddTask={() => {
+          setAddTaskOwner('Maya Chen')
+          setModalOpen('add-task')
+        }}
       />
     )
   })()
@@ -443,6 +484,14 @@ export function App() {
       <SendRemindersModal
         isOpen={modalOpen === 'send-reminders'}
         onClose={() => setModalOpen(null)}
+        notify={notify}
+      />
+
+      <AddTaskModal
+        isOpen={modalOpen === 'add-task'}
+        onClose={() => setModalOpen(null)}
+        defaultOwner={addTaskOwner}
+        employees={complyStore.employees}
         notify={notify}
       />
     </>
@@ -745,20 +794,46 @@ function Avatar({ initials, tone = 'teal' }: { initials: string; tone?: 'teal' |
   return <span className={`avatar avatar--${tone}`}>{initials}</span>
 }
 
+function parseDisplayDateToISO(displayDate: string): string {
+  try {
+    const d = new Date(displayDate)
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+  } catch {}
+  return new Date().toISOString().split('T')[0]
+}
+
+function formatISOToDisplayDate(isoDate: string): string {
+  try {
+    const [year, month, day] = isoDate.split('-').map(Number)
+    const d = new Date(year, month - 1, day)
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  } catch {}
+  return isoDate
+}
+
 function DashboardPage({
   tasks,
   onStatusChange,
+  onDueDateChange,
   showEmptyPlan,
   onToggleEmpty,
   onNavigate,
   onOpenContactHR,
+  onOpenAddTask,
 }: {
   tasks: Task[]
   onStatusChange: (id: string, status: TaskStatus) => void
+  onDueDateChange: (id: string, newDueDate: string) => void
   showEmptyPlan: boolean
   onToggleEmpty: () => void
   onNavigate: (path: string) => void
   onOpenContactHR: () => void
+  onOpenAddTask: () => void
 }) {
   const completed = tasks.filter((task) => task.status === 'completed').length
   const progress = Math.round((completed / tasks.length) * 100)
@@ -862,17 +937,28 @@ function DashboardPage({
             <SectionHeading
               eyebrow="Up next"
               title="Your checklist"
-              description="Keep the momentum going. You can always come back to these."
+              description="Keep the momentum going. You can always change due dates or add custom milestones."
               action={
-                <button className="text-button" onClick={onToggleEmpty}>
-                  Preview empty state
-                </button>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <button className="text-button" onClick={onOpenAddTask}>
+                    <Plus size={14} /> Add task
+                  </button>
+                  <button className="text-button" onClick={onToggleEmpty}>
+                    Preview empty state
+                  </button>
+                </div>
               }
             />
             <div className="task-list">
               {nextTasks.length > 0 ? (
                 nextTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} onStatusChange={onStatusChange} compact />
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onStatusChange={onStatusChange}
+                    onDueDateChange={onDueDateChange}
+                    compact
+                  />
                 ))
               ) : (
                 <div style={{ padding: 20, textAlign: 'center', background: '#fff', borderRadius: 8, border: '1px solid var(--line)' }}>
@@ -951,12 +1037,16 @@ function DashboardPage({
 function TaskCard({
   task,
   onStatusChange,
+  onDueDateChange,
   compact = false,
 }: {
   task: Task
   onStatusChange: (id: string, status: TaskStatus) => void
+  onDueDateChange?: (id: string, newDueDate: string) => void
   compact?: boolean
 }) {
+  const [editingDate, setEditingDate] = useState(false)
+
   return (
     <article className={`task-card ${compact ? 'task-card--compact' : ''} task-card--${task.status}`}>
       <div className="task-card__main">
@@ -972,15 +1062,52 @@ function TaskCard({
           <div className="task-card__meta">
             <span>{task.category}</span>
             <span className={`priority priority--${task.priority}`}>{task.priority} priority</span>
+            {task.owner && <span style={{ color: 'var(--muted)', fontSize: 11 }}>· {task.owner}</span>}
           </div>
           <h3>{task.title}</h3>
           {!compact && <p>{task.description}</p>}
         </div>
       </div>
       <div className="task-card__side">
-        <div className="task-card__due">
+        <div className="task-card__due" title="Click to edit due date">
           <CalendarDays size={14} />
-          <span>{task.dueDate}</span>
+          {editingDate ? (
+            <input
+              type="date"
+              autoFocus
+              defaultValue={parseDisplayDateToISO(task.dueDate)}
+              onChange={(e) => {
+                if (e.target.value) {
+                  onDueDateChange?.(task.id, formatISOToDisplayDate(e.target.value))
+                  setEditingDate(false)
+                }
+              }}
+              onBlur={() => setEditingDate(false)}
+              style={{
+                fontSize: 12,
+                padding: '2px 5px',
+                border: '1px solid var(--teal)',
+                borderRadius: 4,
+                background: '#fff',
+                color: 'var(--ink)',
+              }}
+            />
+          ) : (
+            <span
+              onClick={() => setEditingDate(true)}
+              style={{
+                cursor: 'pointer',
+                borderBottom: '1px dashed var(--muted-soft)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+              title="Click to edit due date"
+            >
+              {task.dueDate}
+              <Pencil size={11} style={{ opacity: 0.6 }} />
+            </span>
+          )}
         </div>
         <select
           value={task.status}
@@ -1000,9 +1127,13 @@ function TaskCard({
 function TasksPage({
   tasks,
   onStatusChange,
+  onDueDateChange,
+  onOpenAddTask,
 }: {
   tasks: Task[]
   onStatusChange: (id: string, status: TaskStatus) => void
+  onDueDateChange: (id: string, newDueDate: string) => void
+  onOpenAddTask: () => void
 }) {
   const [filter, setFilter] = useState<'all' | TaskStatus>('all')
   const filtered = filter === 'all' ? tasks : tasks.filter((task) => task.status === filter)
@@ -1012,7 +1143,12 @@ function TasksPage({
       <SectionHeading
         eyebrow="September onboarding · 30 days"
         title="Everything on your plate"
-        description="A full view of your checklist, with status and due dates in one place."
+        description="A full view of your checklist, with status and due dates in one place. Click any date to update it."
+        action={
+          <ActionButton icon={<Plus size={15} />} onClick={onOpenAddTask}>
+            Add task
+          </ActionButton>
+        }
       />
       <div className="filter-tabs">
         {[
@@ -1034,7 +1170,12 @@ function TasksPage({
       </div>
       <div className="task-list">
         {filtered.map((task) => (
-          <TaskCard key={task.id} task={task} onStatusChange={onStatusChange} />
+          <TaskCard
+            key={task.id}
+            task={task}
+            onStatusChange={onStatusChange}
+            onDueDateChange={onDueDateChange}
+          />
         ))}
       </div>
       <div className="task-page-footer">
@@ -1817,6 +1958,9 @@ function EmployeeDetailPage({
   notify,
   onNavigate,
   onOpenAuditLog,
+  onOpenAddTask,
+  onDueDateChange,
+  onStatusChange,
 }: {
   employeeId: string
   documents: Doc[]
@@ -1825,10 +1969,20 @@ function EmployeeDetailPage({
   notify: (msg: string) => void
   onNavigate: (path: string) => void
   onOpenAuditLog: () => void
+  onOpenAddTask: (ownerName: string) => void
+  onDueDateChange: (id: string, newDueDate: string) => void
+  onStatusChange: (id: string, status: TaskStatus) => void
 }) {
   const employee = complyStore.employees.find((item) => item.id === employeeId) ?? complyStore.employees[0]
   const [tab, setTab] = useState('overview')
   const [note, setNote] = useState('New hire is progressing well. Follow up on the data privacy acknowledgement.')
+
+  // Filter tasks belonging to this employee or general demo tasks
+  const employeeTasks = complyStore.tasks.filter(
+    (t) => t.owner === employee.name || (employee.id === 'm1' && t.owner === 'Maya Chen')
+  ).concat(
+    complyStore.tasks.filter((t) => t.owner !== employee.name && t.owner !== 'Maya Chen').slice(0, 2)
+  )
 
   return (
     <div className="page-stack">
@@ -1915,7 +2069,16 @@ function EmployeeDetailPage({
                 <div className="eyebrow">Onboarding plan</div>
                 <h3>{employee.progress}% complete</h3>
               </div>
-              <StatusBadge status={employee.status} kind="generic" />
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <button
+                  className="text-button"
+                  onClick={() => onOpenAddTask(employee.name)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                >
+                  <Plus size={14} /> Add task
+                </button>
+                <StatusBadge status={employee.status} kind="generic" />
+              </div>
             </div>
             <ProgressBar value={employee.progress} label="Overall plan progress" tone="violet" />
             <div className="detail-stats">
@@ -1933,11 +2096,51 @@ function EmployeeDetailPage({
               </div>
             </div>
             <div className="detail-task-list">
-              {complyStore.tasks.slice(0, 5).map((task) => (
-                <div className="detail-task" key={task.id}>
-                  <span className={`detail-task__dot detail-task__dot--${task.status}`} />
-                  <span>{task.title}</span>
-                  <StatusBadge status={task.status} />
+              {employeeTasks.map((task) => (
+                <div
+                  className="detail-task"
+                  key={task.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '8px 4px',
+                    borderBottom: '1px solid #f1f4f6',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                    <span
+                      className={`detail-task__dot detail-task__dot--${task.status}`}
+                      onClick={() => onStatusChange(task.id, task.status === 'completed' ? 'in-progress' : 'completed')}
+                      style={{ cursor: 'pointer', flexShrink: 0 }}
+                      title="Click to toggle completion"
+                    />
+                    <span style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {task.title}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                    <input
+                      type="date"
+                      defaultValue={parseDisplayDateToISO(task.dueDate)}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          onDueDateChange(task.id, formatISOToDisplayDate(e.target.value))
+                        }
+                      }}
+                      title="Edit due date"
+                      style={{
+                        fontSize: 11,
+                        padding: '2px 4px',
+                        border: '1px solid var(--line)',
+                        borderRadius: 4,
+                        background: '#fff',
+                        color: 'var(--muted)',
+                      }}
+                    />
+                    <StatusBadge status={task.status} />
+                  </div>
                 </div>
               ))}
             </div>

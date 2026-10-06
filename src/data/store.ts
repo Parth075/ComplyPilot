@@ -21,7 +21,7 @@ export interface AuditLogEntry {
   id: string
   actorName: string
   actorRole: string
-  action: 'task_completed' | 'task_updated' | 'document_uploaded' | 'document_approved' | 'document_rejected' | 'policy_uploaded' | 'reminder_sent' | 'template_created' | 'template_assigned' | 'employee_created' | 'report_exported' | 'settings_updated'
+  action: 'task_completed' | 'task_updated' | 'task_created' | 'task_date_updated' | 'document_uploaded' | 'document_approved' | 'document_rejected' | 'policy_uploaded' | 'reminder_sent' | 'template_created' | 'template_assigned' | 'employee_created' | 'report_exported' | 'settings_updated'
   targetTable: string
   targetId: string
   targetLabel: string
@@ -315,6 +315,71 @@ export class ComplyStore {
       target?.title || taskId,
       { newStatus }
     )
+  }
+
+  updateTaskDueDate(taskId: string, newDueDate: string, actor: string = 'Maya Chen', role: string = 'employee') {
+    this.tasks = this.tasks.map(t => {
+      if (t.id === taskId) {
+        return { ...t, dueDate: newDueDate }
+      }
+      return t
+    })
+
+    const target = this.tasks.find(t => t.id === taskId)
+    this.logAudit(
+      actor,
+      role,
+      'task_date_updated',
+      'employee_tasks',
+      taskId,
+      target?.title || taskId,
+      { newDueDate }
+    )
+    this.notify()
+  }
+
+  addTask(task: Omit<Task, 'id'>, actor: string = 'Maya Chen', role: string = 'employee') {
+    const newTask: Task = {
+      ...task,
+      id: `t-${Date.now()}`
+    }
+    this.tasks = [newTask, ...this.tasks]
+
+    // Recalculate employee completion
+    const completedCount = this.tasks.filter(t => t.status === 'completed').length
+    const progress = Math.round((completedCount / this.tasks.length) * 100)
+    this.employees = this.employees.map(e => {
+      if (e.id === 'm1') {
+        return {
+          ...e,
+          progress,
+          status: progress === 100 ? 'Complete' : progress > 50 ? 'On track' : 'Needs attention'
+        }
+      }
+      return e
+    })
+    this.teamMembers = this.teamMembers.map(m => {
+      if (m.id === 'm1') {
+        return {
+          ...m,
+          progress,
+          status: progress === 100 ? 'Complete' : progress > 50 ? 'On track' : 'Needs attention'
+        }
+      }
+      return m
+    })
+
+    this.logAudit(
+      actor,
+      role,
+      'task_created',
+      'employee_tasks',
+      newTask.id,
+      newTask.title,
+      { category: newTask.category, dueDate: newTask.dueDate, priority: newTask.priority, owner: newTask.owner }
+    )
+    this.notify()
+    return newTask
   }
 
   uploadDocument(file: File, linkedTaskId?: string, actor: string = 'Maya Chen') {

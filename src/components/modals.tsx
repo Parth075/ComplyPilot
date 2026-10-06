@@ -846,3 +846,146 @@ export function SendRemindersModal({
     </ModalBase>
   )
 }
+
+// 9. Add Task Modal
+export function AddTaskModal({
+  isOpen,
+  onClose,
+  defaultOwner = 'Maya Chen',
+  employees = [],
+  notify
+}: {
+  isOpen: boolean
+  onClose: () => void
+  defaultOwner?: string
+  employees?: { name: string; role: string }[]
+  notify: (msg: string) => void
+}) {
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [category, setCategory] = useState('Required training')
+  const [dueDate, setDueDate] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 7)
+    return d.toISOString().split('T')[0]
+  })
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium')
+  const [owner, setOwner] = useState(defaultOwner)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!title.trim()) return
+
+    const parsedDate = new Date(dueDate + 'T00:00:00')
+    const formattedDate = parsedDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+
+    complyStore.addTask({
+      title: title.trim(),
+      description: description.trim() || 'Custom onboarding task',
+      category,
+      dueDate: formattedDate,
+      priority,
+      owner,
+      status: 'not-started'
+    })
+
+    notify(`Task "${title}" added for ${owner} due on ${formattedDate}.`)
+    onClose()
+    setTitle('')
+    setDescription('')
+  }
+
+  return (
+    <ModalBase
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Add Task to Employee"
+      subtitle="Phase 2 · Onboarding Checklist Milestone Assignment"
+      footer={
+        <>
+          <button className="action-button action-button--secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="action-button action-button--primary" onClick={handleSubmit}>
+            <Plus size={15} /> Add Task
+          </button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="form-row">
+          <label>Task Title</label>
+          <input
+            required
+            placeholder="e.g. Schedule 1:1 Security Q&A or Benefits Session"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+          />
+        </div>
+
+        <div className="form-row">
+          <label>Description</label>
+          <textarea
+            rows={2}
+            placeholder="Details or expectations for this onboarding milestone..."
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+          />
+        </div>
+
+        <div className="form-grid-2">
+          <div className="form-row">
+            <label>Category</label>
+            <select value={category} onChange={e => setCategory(e.target.value)}>
+              <option value="Required training">Required training</option>
+              <option value="Documents">Documents</option>
+              <option value="Policy review">Policy review</option>
+              <option value="Compliance">Compliance</option>
+              <option value="People">People</option>
+              <option value="IT & Security">IT & Security</option>
+            </select>
+          </div>
+          <div className="form-row">
+            <label>Priority</label>
+            <select value={priority} onChange={e => setPriority(e.target.value as any)}>
+              <option value="high">High priority</option>
+              <option value="medium">Medium priority</option>
+              <option value="low">Low priority</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="form-grid-2">
+          <div className="form-row">
+            <label>Due Date</label>
+            <input
+              type="date"
+              required
+              value={dueDate}
+              onChange={e => setDueDate(e.target.value)}
+            />
+          </div>
+          <div className="form-row">
+            <label>Assigned Employee</label>
+            <select value={owner} onChange={e => setOwner(e.target.value)}>
+              {employees.length > 0 ? (
+                employees.map(emp => (
+                  <option key={emp.name} value={emp.name}>
+                    {emp.name} ({emp.role})
+                  </option>
+                ))
+              ) : (
+                <option value={defaultOwner}>{defaultOwner}</option>
+              )}
+            </select>
+          </div>
+        </div>
+      </form>
+    </ModalBase>
+  )
+}
+
