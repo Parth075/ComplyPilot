@@ -226,20 +226,12 @@ export function App() {
             complyStore.updateTaskStatus(id, status)
             notify('Task status updated.')
           }}
-          onDueDateChange={(id, date) => {
-            complyStore.updateTaskDueDate(id, date)
-            notify(`Task due date updated to ${date}.`)
-          }}
           showEmptyPlan={showEmptyPlan}
           onToggleEmpty={() => setShowEmptyPlan(v => !v)}
           onNavigate={navigate}
           onOpenContactHR={() => {
             setContactHrQuestion('')
             setModalOpen('contact-hr')
-          }}
-          onOpenAddTask={() => {
-            setAddTaskOwner('Maya Chen')
-            setModalOpen('add-task')
           }}
         />
       )
@@ -251,14 +243,6 @@ export function App() {
           onStatusChange={(id, status) => {
             complyStore.updateTaskStatus(id, status)
             notify('Task status updated.')
-          }}
-          onDueDateChange={(id, date) => {
-            complyStore.updateTaskDueDate(id, date)
-            notify(`Task due date updated to ${date}.`)
-          }}
-          onOpenAddTask={() => {
-            setAddTaskOwner('Maya Chen')
-            setModalOpen('add-task')
           }}
         />
       )
@@ -403,18 +387,10 @@ export function App() {
           complyStore.updateTaskStatus(id, status)
           notify('Task status updated.')
         }}
-        onDueDateChange={(id, date) => {
-          complyStore.updateTaskDueDate(id, date)
-          notify(`Task due date updated to ${date}.`)
-        }}
         showEmptyPlan={false}
         onToggleEmpty={() => undefined}
         onNavigate={navigate}
         onOpenContactHR={() => setModalOpen('contact-hr')}
-        onOpenAddTask={() => {
-          setAddTaskOwner('Maya Chen')
-          setModalOpen('add-task')
-        }}
       />
     )
   })()
@@ -819,21 +795,17 @@ function formatISOToDisplayDate(isoDate: string): string {
 function DashboardPage({
   tasks,
   onStatusChange,
-  onDueDateChange,
   showEmptyPlan,
   onToggleEmpty,
   onNavigate,
   onOpenContactHR,
-  onOpenAddTask,
 }: {
   tasks: Task[]
   onStatusChange: (id: string, status: TaskStatus) => void
-  onDueDateChange: (id: string, newDueDate: string) => void
   showEmptyPlan: boolean
   onToggleEmpty: () => void
   onNavigate: (path: string) => void
   onOpenContactHR: () => void
-  onOpenAddTask: () => void
 }) {
   const completed = tasks.filter((task) => task.status === 'completed').length
   const progress = Math.round((completed / tasks.length) * 100)
@@ -937,16 +909,11 @@ function DashboardPage({
             <SectionHeading
               eyebrow="Up next"
               title="Your checklist"
-              description="Keep the momentum going. You can always change due dates or add custom milestones."
+              description="Your onboarding plan is managed by People Ops. Contact HR if you need to adjust a milestone."
               action={
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <button className="text-button" onClick={onOpenAddTask}>
-                    <Plus size={14} /> Add task
-                  </button>
-                  <button className="text-button" onClick={onToggleEmpty}>
-                    Preview empty state
-                  </button>
-                </div>
+                <button className="text-button" onClick={onToggleEmpty}>
+                  Preview empty state
+                </button>
               }
             />
             <div className="task-list">
@@ -956,7 +923,6 @@ function DashboardPage({
                     key={task.id}
                     task={task}
                     onStatusChange={onStatusChange}
-                    onDueDateChange={onDueDateChange}
                     compact
                   />
                 ))
@@ -1039,11 +1005,13 @@ function TaskCard({
   onStatusChange,
   onDueDateChange,
   compact = false,
+  isAdmin = false,
 }: {
   task: Task
   onStatusChange: (id: string, status: TaskStatus) => void
   onDueDateChange?: (id: string, newDueDate: string) => void
   compact?: boolean
+  isAdmin?: boolean
 }) {
   const [editingDate, setEditingDate] = useState(false)
 
@@ -1069,9 +1037,9 @@ function TaskCard({
         </div>
       </div>
       <div className="task-card__side">
-        <div className="task-card__due" title="Click to edit due date">
+        <div className="task-card__due" title={isAdmin ? 'Click to edit due date' : 'Due date'}>
           <CalendarDays size={14} />
-          {editingDate ? (
+          {isAdmin && editingDate ? (
             <input
               type="date"
               autoFocus
@@ -1092,7 +1060,7 @@ function TaskCard({
                 color: 'var(--ink)',
               }}
             />
-          ) : (
+          ) : isAdmin ? (
             <span
               onClick={() => setEditingDate(true)}
               style={{
@@ -1107,18 +1075,24 @@ function TaskCard({
               {task.dueDate}
               <Pencil size={11} style={{ opacity: 0.6 }} />
             </span>
+          ) : (
+            <span>{task.dueDate}</span>
           )}
         </div>
-        <select
-          value={task.status}
-          aria-label={`Status for ${task.title}`}
-          onChange={(event) => onStatusChange(task.id, event.target.value as TaskStatus)}
-        >
-          <option value="not-started">Not started</option>
-          <option value="in-progress">In progress</option>
-          <option value="pending-review">Pending review</option>
-          <option value="completed">Completed</option>
-        </select>
+        {isAdmin ? (
+          <select
+            value={task.status}
+            aria-label={`Status for ${task.title}`}
+            onChange={(event) => onStatusChange(task.id, event.target.value as TaskStatus)}
+          >
+            <option value="not-started">Not started</option>
+            <option value="in-progress">In progress</option>
+            <option value="pending-review">Pending review</option>
+            <option value="completed">Completed</option>
+          </select>
+        ) : (
+          <StatusBadge status={task.status === 'completed' ? 'Complete' : task.status === 'in-progress' ? 'In progress' : task.status === 'pending-review' ? 'Pending review' : 'Not started'} kind="task" />
+        )}
       </div>
     </article>
   )
@@ -1127,13 +1101,9 @@ function TaskCard({
 function TasksPage({
   tasks,
   onStatusChange,
-  onDueDateChange,
-  onOpenAddTask,
 }: {
   tasks: Task[]
   onStatusChange: (id: string, status: TaskStatus) => void
-  onDueDateChange: (id: string, newDueDate: string) => void
-  onOpenAddTask: () => void
 }) {
   const [filter, setFilter] = useState<'all' | TaskStatus>('all')
   const filtered = filter === 'all' ? tasks : tasks.filter((task) => task.status === filter)
@@ -1143,12 +1113,7 @@ function TasksPage({
       <SectionHeading
         eyebrow="September onboarding · 30 days"
         title="Everything on your plate"
-        description="A full view of your checklist, with status and due dates in one place. Click any date to update it."
-        action={
-          <ActionButton icon={<Plus size={15} />} onClick={onOpenAddTask}>
-            Add task
-          </ActionButton>
-        }
+        description="A full view of your checklist with status and due dates. Your plan is managed by People Ops."
       />
       <div className="filter-tabs">
         {[
@@ -1174,7 +1139,6 @@ function TasksPage({
             key={task.id}
             task={task}
             onStatusChange={onStatusChange}
-            onDueDateChange={onDueDateChange}
           />
         ))}
       </div>
