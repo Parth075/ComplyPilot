@@ -829,3 +829,40 @@ input::placeholder { color: #a1acb5; }
 .audit-action-tag--warning { background: var(--amber-tint); color: var(--amber); }
 .audit-action-tag--purple { background: var(--violet-tint); color: var(--violet); }
 
+/* ── Profile / InfoCard ─────────────────────────────────────── */
+.info-card { padding: 0; overflow: hidden; }
+.info-card .panel__header { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
+.info-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.info-row:last-child { border-bottom: 0; }
+.info-row > span {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.info-row > strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: right;
+}
+
+.profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 700px) { .profile-grid { grid-template-columns: 1fr; } }
+
+.profile-access {
+  grid-column: 1 / -1;
+  padding: 22px 24px;
+  background: var(--teal-tint);
+  border: 1px solid rgba(30,138,120,.15);
+}
+.profile-access .eyebrow { margin-bottom: 6px; }
+.profile-access h3 { font-size: 16px; margin-bottom: 6px; }
+.profile-access p { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
