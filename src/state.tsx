@@ -67,6 +67,7 @@ interface AppContextValue {
   // Auth & Session
   user: User | null;
   profile: Profile | null;
+  displayName: string;
   role: Role; // 'employee' | 'manager' | 'admin'
   userRole: UserRole; // 'employee' | 'manager' | 'hr_admin'
   authLoading: boolean;
@@ -185,7 +186,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           setUser(session.user);
-          await loadUserProfile(session.user.id);
+          await loadUserProfile(session.user.id, session.user);
         } else {
           setUser(null);
           setProfile(null);
@@ -203,7 +204,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       if (!isMounted) return;
       if (session?.user) {
         setUser(session.user);
-        await loadUserProfile(session.user.id);
+        await loadUserProfile(session.user.id, session.user);
       } else {
         setUser(null);
         setProfile(null);
@@ -217,8 +218,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     };
   }, [isConfigured]);
 
-  async function loadUserProfile(userId: string) {
+  async function loadUserProfile(userId: string, currentUser?: User | null) {
     try {
+      const activeUser = currentUser || user;
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -227,6 +229,18 @@ export function DemoProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.warn('Profile fetch warning (new user may need setup):', error.message);
+        // Fallback to user metadata if profile table row is being provisioned
+        const metaName = activeUser?.user_metadata?.full_name;
+        const metaRole = activeUser?.user_metadata?.role as UserRole | undefined;
+        setProfile({
+          id: userId,
+          full_name: metaName || (activeUser?.email ? activeUser.email.split('@')[0] : 'Team Member'),
+          role: metaRole || 'employee',
+          department: 'General',
+          manager_id: null,
+          start_date: new Date().toISOString().split('T')[0],
+          created_at: new Date().toISOString(),
+        });
         return;
       }
 
@@ -962,10 +976,16 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const displayName =
+    profile?.full_name ||
+    (user?.user_metadata?.full_name as string) ||
+    (user?.email ? user.email.split('@')[0] : '');
+
   const value = useMemo<AppContextValue>(
     () => ({
       user,
       profile,
+      displayName,
       role,
       userRole,
       authLoading,
@@ -1004,6 +1024,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     [
       user,
       profile,
+      displayName,
       role,
       userRole,
       authLoading,

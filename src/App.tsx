@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { navAdmin, navEmployee, navManager, type Role } from './data';
 import { Avatar } from './components';
-import { AuthPage, LandingPage } from './pages/PublicPages';
+import { AuthPage } from './pages/PublicPages';
 import {
   AdminDashboard,
   CompliancePage,
@@ -78,7 +78,7 @@ export function App() {
 }
 
 function AppRoutes() {
-  const { user, role, authLoading, isLive } = useDemo();
+  const { user, role, authLoading } = useDemo();
 
   if (authLoading) {
     return (
@@ -94,21 +94,21 @@ function AppRoutes() {
       <Route
         path="/"
         element={
-          user || !isLive ? (
+          user ? (
             role === 'admin' ? (
               <Navigate to="/admin/dashboard" replace />
             ) : (
               <Navigate to="/app/dashboard" replace />
             )
           ) : (
-            <LandingPage />
+            <Navigate to="/login" replace />
           )
         }
       />
       <Route
         path="/login"
         element={
-          user && isLive ? (
+          user ? (
             role === 'admin' ? (
               <Navigate to="/admin/dashboard" replace />
             ) : (
@@ -122,7 +122,7 @@ function AppRoutes() {
       <Route
         path="/signup"
         element={
-          user && isLive ? (
+          user ? (
             role === 'admin' ? (
               <Navigate to="/admin/dashboard" replace />
             ) : (
@@ -173,10 +173,10 @@ function AppRoutes() {
 }
 
 function RoleLayout({ admin }: { admin: boolean }) {
-  const { user, role, isLive } = useDemo();
+  const { user, role } = useDemo();
 
-  // If live Supabase auth is enabled and user is not authenticated, redirect to /login
-  if (isLive && !user) {
+  // If user is not authenticated, strictly redirect to /login
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
@@ -208,7 +208,7 @@ function ManagerOnly({ children }: { children: ReactNode }) {
 }
 
 function AppShell({ admin, children }: { admin: boolean; children: ReactNode }) {
-  const { role, profile, user, signOut } = useDemo();
+  const { role, displayName, user, signOut } = useDemo();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -224,14 +224,13 @@ function AppShell({ admin, children }: { admin: boolean; children: ReactNode }) 
     ? 'People operations'
     : 'Your workspace';
 
-  const displayName = profile?.full_name || (role === 'admin' ? 'Jordan Lee' : 'Maya Chen');
   const userInitials = displayName
     .trim()
     .split(/\s+/)
     .slice(0, 2)
     .map((p) => p[0])
     .join('')
-    .toUpperCase();
+    .toUpperCase() || 'U';
 
   return (
     <div className={`app-shell ${mobileOpen ? 'mobile-nav-open' : ''}`}>

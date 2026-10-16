@@ -13,16 +13,17 @@ const nextStatus: Record<TaskStatus, TaskStatus> = {
 };
 
 export function DashboardPage() {
-  const { tasks, setTaskStatus } = useDemo();
+  const { tasks, setTaskStatus, displayName } = useDemo();
   const [loading, setLoading] = useState(true);
   useEffect(() => { const timer = window.setTimeout(() => setLoading(false), 360); return () => window.clearTimeout(timer); }, []);
   const completed = tasks.filter((task) => task.status === 'completed').length;
   const progress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
   const nextTask = tasks.find((task) => task.status === 'in-progress') ?? tasks.find((task) => task.status === 'not-started');
   const recent = tasks.filter((task) => task.status !== 'completed').slice(0, 4);
+  const firstName = displayName.trim().split(/\s+/)[0] || 'there';
 
   return <>
-    <PageHeading eyebrow="WEDNESDAY, OCTOBER 7, 2026" title="Good morning, Maya" description="A clear start begins with knowing what comes next." action={<Link to="/app/tasks" className="button button-secondary"><CalendarDays size={15} /> First week</Link>} />
+    <PageHeading eyebrow="ONBOARDING WORKSPACE" title={`Good morning, ${firstName}`} description="A clear start begins with knowing what comes next." action={<Link to="/app/tasks" className="button button-secondary"><CalendarDays size={15} /> First week</Link>} />
     <div className="welcome-strip"><div className="welcome-icon"><Sparkles size={18} /></div><div><strong>{tasks.length ? 'You’re finding your rhythm.' : 'Your next steps will appear here.'}</strong><p>{tasks.length ? 'Your onboarding plan is moving along. Here’s the next useful step.' : 'People Operations will add an onboarding plan when it is ready.'}</p></div><div className="welcome-progress"><span>{completed} of {tasks.length} steps complete</span><ProgressBar value={progress} compact /></div></div>
     <div className="employee-dashboard-grid">
       <section className="next-step-card">
@@ -153,9 +154,10 @@ export function DocumentsPage() {
 type ChatMessage = { id: string; from: 'assistant' | 'you'; text: string; sourceId?: string; sourceTitle?: string; sourceSection?: string; fallback?: boolean; error?: boolean };
 
 export function AskPage() {
-  const { policies, role, askPolicy } = useDemo();
+  const { policies, displayName, askPolicy } = useDemo();
   const publishedPolicies = policies.filter((policy) => policy.status === 'Published');
-  const [messages, setMessages] = useState<ChatMessage[]>([{ id: 'welcome', from: 'assistant', text: `Hi ${role === 'manager' ? 'Jordan' : 'Maya'}. I can help you find answers in published workplace policies. Ask in your own words and I’ll point you to a source when one is available.` }]);
+  const firstName = displayName.trim().split(/\s+/)[0] || 'there';
+  const [messages, setMessages] = useState<ChatMessage[]>([{ id: 'welcome', from: 'assistant', text: `Hi ${firstName}. I can help you find answers in published workplace policies. Ask in your own words and I’ll point you to a source when one is available.` }]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const [sourceId, setSourceId] = useState<string | null>(null);
@@ -234,12 +236,28 @@ export function AskPage() {
 }
 
 export function ProfilePage() {
+  const { profile, user, displayName, role } = useDemo();
   const [saved, setSaved] = useState(false);
+  const nameParts = displayName.trim().split(/\s+/);
+  const preferredName = nameParts[0] || 'Team';
+  const lastName = nameParts.slice(1).join(' ') || 'Member';
+  const email = user?.email || 'employee@northstar.test';
+  const roleLabel = role === 'admin' ? 'HR Administrator' : role === 'manager' ? 'Team Lead / Manager' : 'Employee';
+  const department = profile?.department || 'People & Culture';
+  const empId = user ? `CP-${user.id.slice(0, 4).toUpperCase()}` : 'CP-1048';
+  const initials = displayName
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase() || 'U';
+
   return <>
     <PageHeading eyebrow="YOUR DETAILS" title="My profile" description="Your profile helps People Operations and your manager support your first weeks." action={<button className="button button-primary" onClick={() => { setSaved(true); window.setTimeout(() => setSaved(false), 2200); }}>{saved ? <Check size={15} /> : <CheckCircle2 size={15} />}{saved ? 'Saved' : 'Save changes'}</button>} />
     <div className="profile-layout">
-      <section className="surface-card profile-card"><div className="profile-identity"><Avatar initials="MC" size="lg" color="sage" /><div><h2>Maya Chen</h2><p>People Operations Associate <span>·</span> People &amp; Culture</p></div><span className="profile-active"><i /> Active</span></div><div className="profile-form-grid"><label><span>Preferred name</span><input className="field-input" defaultValue="Maya" /></label><label><span>Last name</span><input className="field-input" defaultValue="Chen" /></label><label><span>Work email</span><input className="field-input" defaultValue="maya.chen@example.test" type="email" /></label><label><span>Phone number</span><input className="field-input" defaultValue="+1 (555) 014-2078" /></label><label><span>Department</span><input className="field-input field-locked" defaultValue="People & Culture" readOnly /></label><label><span>Role</span><input className="field-input field-locked" defaultValue="People Operations Associate" readOnly /></label></div></section>
-      <aside className="surface-card profile-meta"><div className="profile-meta-heading"><UserRound size={16} /><h3>Work details</h3></div><div className="meta-row"><span>Manager</span><strong>Jordan Lee</strong></div><div className="meta-row"><span>Start date</span><strong>October 1, 2026</strong></div><div className="meta-row"><span>Employee ID</span><strong className="mono">CP-1048</strong></div><div className="profile-privacy"><ShieldCheck size={15} /><span>Profile details are available to you, your manager, and People Operations.</span></div></aside>
+      <section className="surface-card profile-card"><div className="profile-identity"><Avatar initials={initials} size="lg" color="sage" /><div><h2>{displayName}</h2><p>{roleLabel} <span>·</span> {department}</p></div><span className="profile-active"><i /> Active</span></div><div className="profile-form-grid"><label><span>Preferred name</span><input className="field-input" defaultValue={preferredName} /></label><label><span>Last name</span><input className="field-input" defaultValue={lastName} /></label><label><span>Work email</span><input className="field-input" defaultValue={email} type="email" /></label><label><span>Phone number</span><input className="field-input" defaultValue="+1 (555) 014-2078" /></label><label><span>Department</span><input className="field-input field-locked" defaultValue={department} readOnly /></label><label><span>Role</span><input className="field-input field-locked" defaultValue={roleLabel} readOnly /></label></div></section>
+      <aside className="surface-card profile-meta"><div className="profile-meta-heading"><UserRound size={16} /><h3>Work details</h3></div><div className="meta-row"><span>Manager</span><strong>Jordan Lee</strong></div><div className="meta-row"><span>Start date</span><strong>{profile?.start_date || 'October 1, 2026'}</strong></div><div className="meta-row"><span>Employee ID</span><strong className="mono">{empId}</strong></div><div className="profile-privacy"><ShieldCheck size={15} /><span>Profile details are available to you, your manager, and People Operations.</span></div></aside>
     </div>
   </>;
 }
