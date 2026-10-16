@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'r
 import { ArrowRight, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronRight, Clock3, Download, FileCheck2, FileText, Info, LifeBuoy, ListChecks, MessageCircle, Plus, Send, ShieldCheck, Sparkles, Upload, UserRound, Users, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Avatar, EmptyState, PageHeading, ProgressBar, SectionHeading, SkeletonRows, StatusPill } from '../components';
-import type { PolicySource, TaskStatus } from '../data';
+import type { TaskStatus } from '../data';
 import { useDemo } from '../state';
 
 const nextStatus: Record<TaskStatus, TaskStatus> = {
@@ -99,45 +99,46 @@ export function DocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(false);
-  const [failedFile, setFailedFile] = useState('');
+  const [failedFile, setFailedFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { const timer = window.setTimeout(() => setLoading(false), 360); return () => window.clearTimeout(timer); }, []);
 
-  function processFile(fileName: string, retry = false) {
+  async function processFile(file: File) {
     setUploading(true);
     setUploadError(false);
-    setTimeout(() => {
-      setUploading(false);
-      if (!retry && fileName.toLowerCase().includes('retry')) {
-        setFailedFile(fileName);
-        setUploadError(true);
-        return;
-      }
-      const documentId = addDocument(fileName);
-      window.setTimeout(() => setDocumentStatus(documentId, 'pending-review'), 1300);
-      setFailedFile('');
+    try {
+      const documentId = await addDocument(file.name, file);
+      // Status becomes pending_review for HR review
+      await setDocumentStatus(documentId, 'pending-review');
+      setFailedFile(null);
       if (inputRef.current) inputRef.current.value = '';
-    }, 650);
+    } catch (err) {
+      console.error('File upload failed:', err);
+      setFailedFile(file);
+      setUploadError(true);
+    } finally {
+      setUploading(false);
+    }
   }
 
   function chooseFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (file) processFile(file.name);
+    if (file) processFile(file);
   }
 
   return <>
-    <PageHeading eyebrow="DOCUMENTS & FORMS" title="My documents" description="Keep the documents for your onboarding plan together. Files in this walkthrough stay in your browser." />
+    <PageHeading eyebrow="DOCUMENTS & FORMS" title="My documents" description="Securely submit required onboarding and compliance records. Files are stored in private Supabase Storage and gated by Postgres RLS." />
     <div className="documents-layout">
       <div className="documents-main">
         <section className="surface-card upload-card">
           <div className="upload-card-heading"><div><h2>Upload a document</h2><p>PDF, JPG, or PNG · Up to 10 MB</p></div><span className="upload-privacy"><ShieldCheck size={14} /> Private to your team</span></div>
-          <button className={`dropzone ${uploading ? 'dropzone-loading' : ''}`} onClick={() => !uploading && inputRef.current?.click()} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) processFile(file.name); }} aria-label="Choose a document to upload">
+          <button className={`dropzone ${uploading ? 'dropzone-loading' : ''}`} onClick={() => !uploading && inputRef.current?.click()} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) processFile(file); }} aria-label="Choose a document to upload">
             <span className="dropzone-icon">{uploading ? <span className="spinner" /> : <Upload size={19} />}</span>
-            <strong>{uploading ? 'Adding your document…' : 'Drop a file here, or browse'}</strong>
-            <small>{uploading ? 'This is a local walkthrough simulation.' : 'Your file name is shown locally; no file is sent to a server.'}</small>
+            <strong>{uploading ? 'Uploading to secure storage…' : 'Drop a file here, or browse'}</strong>
+            <small>{uploading ? 'Encrypting and saving to private bucket...' : 'Stored securely in private Supabase Storage bucket.'}</small>
           </button>
           <input ref={inputRef} className="visually-hidden" type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={chooseFile} />
-          {uploadError && <div className="inline-error"><span><Info size={15} /></span><div><strong>That upload didn’t finish.</strong><p>Try the local demo action again. No file left your browser.</p></div><button className="button button-secondary button-small" onClick={() => processFile(failedFile, true)}>Retry</button></div>}
+          {uploadError && <div className="inline-error"><span><Info size={15} /></span><div><strong>That upload didn’t finish.</strong><p>Could not write to Supabase Storage. Please verify bucket permissions or try again.</p></div>{failedFile && <button className="button button-secondary button-small" onClick={() => processFile(failedFile)}>Retry</button>}</div>}
         </section>
         <section className="documents-table-section">
           <SectionHeading title="Your files" description={`${documents.length} documents in your workspace`} />
@@ -149,10 +150,10 @@ export function DocumentsPage() {
   </>;
 }
 
-type ChatMessage = { id: string; from: 'assistant' | 'you'; text: string; sourceId?: string; fallback?: boolean; error?: boolean };
+type ChatMessage = { id: string; from: 'assistant' | 'you'; text: string; sourceId?: string; sourceTitle?: string; sourceSection?: string; fallback?: boolean; error?: boolean };
 
 export function AskPage() {
-  const { policies, role } = useDemo();
+  const { policies, role, askPolicy } = useDemo();
   const publishedPolicies = policies.filter((policy) => policy.status === 'Published');
   const [messages, setMessages] = useState<ChatMessage[]>([{ id: 'welcome', from: 'assistant', text: `Hi ${role === 'manager' ? 'Jordan' : 'Maya'}. I can help you find answers in published workplace policies. Ask in your own words and I’ll point you to a source when one is available.` }]);
   const [input, setInput] = useState('');
@@ -162,62 +163,43 @@ export function AskPage() {
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [messages, typing]);
 
-  function answerFor(question: string): ChatMessage {
-    const text = question.toLowerCase();
-    let source: PolicySource | undefined;
-    let response = '';
-    if (text.includes('error') || text.includes('offline') || text.includes("can't connect") || text.includes('cannot connect')) {
-      return { id: `a-${Date.now()}`, from: 'assistant', text: 'I couldn’t load a policy response just now. Please contact People Operations directly for help with this question.', fallback: true, error: true };
-    }
-    const targetId = text.includes('time off') || text.includes('vacation') || text.includes('leave') || text.includes('day off') ? 'time-off'
-      : text.includes('remote') || text.includes('home') || text.includes('work location') ? 'remote-work'
-      : text.includes('security') || text.includes('password') || text.includes('information') ? 'security' : undefined;
-    const directSource = targetId ? publishedPolicies.find((policy) => policy.id === targetId) : undefined;
-    source = directSource;
-    if (!source && targetId) {
-      const topicTerms: Record<string, string[]> = {
-        'time-off': ['time away', 'time-off', 'vacation', 'leave'],
-        'remote-work': ['remote', 'working arrangements', 'work location', 'flexible work'],
-        security: ['security', 'information care', 'protecting information', 'password'],
-      };
-      source = publishedPolicies.find((policy) => topicTerms[targetId].some((term) => `${policy.title} ${policy.section}`.toLowerCase().includes(term)));
-    }
-    if (source && directSource && targetId === 'time-off') {
-      response = 'Start by submitting a time-away request through the team process and discussing the timing with your manager. The policy asks managers to confirm coverage and follow up if more information is needed.';
-    } else if (source && directSource && targetId === 'remote-work') {
-      response = 'Your team agrees on a working rhythm with your manager. Keep your calendar current, join scheduled team meetings, and ask your manager about location-specific arrangements.';
-    } else if (source && directSource && targetId === 'security') {
-      response = 'Use approved tools for work information, keep sign-in details private, and report a concern to People Operations promptly.';
-    } else if (source) {
-      response = `The published excerpt “${source.title}” says: ${source.body}`;
-    } else {
-      const ignored = new Set(['about', 'from', 'with', 'your', 'what', 'when', 'where', 'which', 'does', 'have', 'this', 'that', 'should', 'could', 'would', 'please', 'policy', 'work']);
-      const terms = text.split(/\W+/).filter((term) => term.length > 3 && !ignored.has(term));
-      source = publishedPolicies.find((policy) => terms.some((term) => `${policy.title} ${policy.section}`.toLowerCase().includes(term)));
-      if (source) response = `The published excerpt “${source.title}” says: ${source.body}`;
-    }
-    if (!source) {
-      const fallback = publishedPolicies.length
-        ? 'I couldn’t find a confident answer in the available policy excerpts. People Operations can help confirm the right guidance for your situation.'
-        : 'No policies are published in this demo right now, so I can’t verify an answer. People Operations can help confirm the right guidance for your situation.';
-      return { id: `a-${Date.now()}`, from: 'assistant', text: fallback, fallback: true };
-    }
-    if (!response) {
-      return { id: `a-${Date.now()}`, from: 'assistant', text: 'I couldn’t find a confident answer in the available policy excerpts. People Operations can help confirm the right guidance for your situation.', fallback: true };
-    }
-    return { id: `a-${Date.now()}`, from: 'assistant', text: response, sourceId: source.id };
-  }
-
-  function sendMessage(raw = input) {
+  async function sendMessage(raw = input) {
     const question = raw.trim();
     if (!question || typing) return;
     setMessages((current) => [...current, { id: `u-${Date.now()}`, from: 'you', text: question }]);
     setInput('');
     setTyping(true);
-    window.setTimeout(() => {
-      setMessages((current) => [...current, answerFor(question)]);
+
+    try {
+      const res = await askPolicy(question);
+      setMessages((current) => [
+        ...current,
+        {
+          id: `a-${Date.now()}`,
+          from: 'assistant',
+          text: res.answer,
+          sourceId: res.sourceId,
+          sourceTitle: res.sourceTitle,
+          sourceSection: res.sourceSection,
+          fallback: res.fallback,
+          error: res.error,
+        },
+      ]);
+    } catch (err) {
+      console.error('Ask policy error:', err);
+      setMessages((current) => [
+        ...current,
+        {
+          id: `a-${Date.now()}`,
+          from: 'assistant',
+          text: 'I couldn’t load a policy response just now. Please contact People Operations directly for help with this question.',
+          fallback: true,
+          error: true,
+        },
+      ]);
+    } finally {
       setTyping(false);
-    }, 780);
+    }
   }
 
   const selectedSource = publishedPolicies.find((source) => source.id === sourceId);

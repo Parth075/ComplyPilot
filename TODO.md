@@ -57,3 +57,13 @@
 - The app starts on the WebDev-configured port and returns a successful Preview response. The route manifest returns HTTP 200 with valid JSON and every listed route.
 - Resolve actionable TypeScript diagnostics and run the project’s available production/build check.
 - Keep the result in Preview for the internal walkthrough; do not publish publicly unless later requested. Do not add real authentication, backend/database services, external integrations, or file transmission.
+
+## [x] 8. Template task editing, HR date controls, and master onboarding blueprint
+
+- `/admin/templates`: Full task management in existing templates. HR Admins can view all steps within a template, edit step titles, categories, due windows (e.g. Day 1, Day 5, Day 30), assigned owners (Employee, Manager, HR Admin, IT), instructions, and mandatory flags. Admins can also add new steps or delete obsolete steps with immediate state updates.
+- `/admin/employees/:id`: HR Admin task due date adjustment. Admins can adjust task deadlines directly on the employee's onboarding checklist, with quick presets (Today, +3 days, +1 week, +2 weeks, end of month), custom date input, and optional change reasons that are automatically logged into the employee's audit trail timeline.
+- `/app/onboarding` and `/admin/onboarding`: Comprehensive Onboarding Hub and Platform Blueprint containing:
+  1. Complete employee profile & provisioning dossier (Maya Chen, personal details, equipment serials, MDM enrollment, SaaS entitlements).
+  2. 5-Stage Lifecycle Milestone Roadmap (Pre-boarding, Day 1 launchpad, Week 1 compliance, Month 1 immersion, Days 30-60 autonomy, Days 60-90 graduation with verification evidence).
+  3. Regulatory compliance & legal repository (Form I-9, Form W-4, Direct Deposit, NDAs, Handbook, SOC2 Type II training).
+  4. Strategic Architecture Decision Matrix for upcoming building plans (HRIS bi-directional sync, dynamic conditional template engine, AI OCR identity verification, Slack RAG bot, e-signatures, SLA escalation engine) with interactive priority selection, sprint approval tracking, stakeholder notes, and direct CSV export.
