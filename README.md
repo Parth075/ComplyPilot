@@ -5,8 +5,9 @@ A responsive frontend demo for an internal onboarding and compliance workspace. 
 ## Run locally
 
 ```bash
-pnpm install
-pnpm dev
+npm install
+npm run dev
+# or: pnpm install && pnpm dev
 ```
 
 The preview listens on port `3000`.
